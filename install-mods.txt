@@ -1,0 +1,5 @@
+https://github.com/azerothcore/portals-in-all-capitals
+https://github.com/azerothcore/mod-individual-xp
+https://github.com/azerothcore/mod-autobalance
+https://github.com/azerothcore/mod-solocraft
+https://github.com/azerothcore/mod-solo-lfg
