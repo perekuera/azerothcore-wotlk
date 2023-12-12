@@ -82,7 +82,7 @@ services:
       ### WARDEN ###
       AC_WARDEN_ENABLED: "0"
       ### GAME MASTER ###
-      AC_GM_START_LEVEL: "80"
+      AC_GM_START_LEVEL: "1"
       AC_GM_ALLOW_INVITE: "1"
       AC_GM_ALLOW_FRIEND: "1"
       ### CHEAT ###
