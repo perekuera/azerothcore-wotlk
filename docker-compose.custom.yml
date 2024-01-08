@@ -74,6 +74,9 @@ services:
       # My configs #
       ##############
       ### REMOTE ACCESS ###
+      AC_RA_ENABLE: "1"
+      AC_RA_IP: "0.0.0.0"
+      AC_RA_PORT: "3443"
       AC_SOAP_ENABLED: "1"
       AC_SOAP_IP: "127.0.0.1"
       AC_SOAP_PORT: "7878"
@@ -173,7 +176,9 @@ services:
       ### FFAPVP ###
     ports:
       - ${DOCKER_WORLD_EXTERNAL_PORT:-8085}:8085
-      - ${DOCKER_SOAP_EXTERNAL_PORT:-7878}:7878
+      #- ${DOCKER_SOAP_EXTERNAL_PORT:-7878}:7878
+      - 7979:7878
+      - 3443:3443
     volumes:
       - ${DOCKER_VOL_ETC:-./env/dist/etc}:/azerothcore/env/dist/etc
       # [osxfs optimization]: https://stackoverflow.com/a/63437557/1964544
