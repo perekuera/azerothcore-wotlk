@@ -176,8 +176,7 @@ services:
       ### FFAPVP ###
     ports:
       - ${DOCKER_WORLD_EXTERNAL_PORT:-8085}:8085
-      #- ${DOCKER_SOAP_EXTERNAL_PORT:-7878}:7878
-      - 7979:7878
+      - ${DOCKER_SOAP_EXTERNAL_PORT:-7878}:7878
       - 3443:3443
     volumes:
       - ${DOCKER_VOL_ETC:-./env/dist/etc}:/azerothcore/env/dist/etc
