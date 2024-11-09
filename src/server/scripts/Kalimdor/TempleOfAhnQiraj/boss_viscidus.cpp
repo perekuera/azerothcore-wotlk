@@ -366,7 +366,7 @@ struct npc_toxic_slime : public ScriptedAI
 
     void InitializeAI() override
     {
-        SetCombatMovement(false);
+        me->SetCombatMovement(false);
         DoCastSelf(SPELL_TOXIN);
 
         InstanceScript* instance = me->GetInstanceScript();
@@ -420,4 +420,3 @@ void AddSC_boss_viscidus()
     RegisterSpellScript(spell_explode_trigger);
     RegisterSpellScript(spell_summon_toxin_slime);
 }
-

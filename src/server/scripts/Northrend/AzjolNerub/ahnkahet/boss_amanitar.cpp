@@ -235,7 +235,7 @@ struct npc_amanitar_mushrooms : public ScriptedAI
 {
     npc_amanitar_mushrooms(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        SetCombatMovement(false);
+        me->SetCombatMovement(false);
 
         //TODO: this prolly needs to be done in database
         pCreature->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
@@ -350,4 +350,3 @@ void AddSC_boss_amanitar()
     // Spells
     RegisterSpellScript(spell_amanitar_remove_mushroom_power);
 }
-

@@ -17,11 +17,14 @@
 
 #include "CreatureGroups.h"
 #include "CreatureScript.h"
+#include "GridNotifiers.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
 #include "SpellScriptLoader.h"
 #include "TaskScheduler.h"
 #include "serpent_shrine.h"
+#include "SpellAuraEffects.h"
+#include "SpellScript.h"
 
 enum Talk
 {
@@ -94,8 +97,6 @@ struct boss_leotheras_the_blind : public BossAI
             }
 
             me->SetUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
-
-            DoResetThreatList();
             me->ClearTarget();
             me->SendMeleeAttackStop();
             scheduler.CancelGroup(GROUP_DEMON);
@@ -112,6 +113,7 @@ struct boss_leotheras_the_blind : public BossAI
                 DoCastSelf(SPELL_SUMMON_SHADOW_OF_LEOTHERAS);
             }).Schedule(6s, [this](TaskContext)
             {
+                DoResetThreatList();
                 me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
                 me->SetStandState(UNIT_STAND_STATE_STAND);
                 me->SetReactState(REACT_AGGRESSIVE);
@@ -458,4 +460,3 @@ void AddSC_boss_leotheras_the_blind()
     RegisterSpellScript(spell_leotheras_demon_link);
     RegisterSpellScript(spell_leotheras_clear_consuming_madness);
 }
-
