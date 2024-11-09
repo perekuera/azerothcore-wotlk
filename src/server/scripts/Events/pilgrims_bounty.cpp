@@ -21,6 +21,7 @@
 #include "PassiveAI.h"
 #include "Player.h"
 #include "SpellAuraEffects.h"
+#include "SpellMgr.h"
 #include "SpellScript.h"
 #include "SpellScriptLoader.h"
 #include "Vehicle.h"
@@ -118,7 +119,7 @@ struct npc_pilgrims_bounty_chair : public VehicleAI
 
     void PassengerBoarded(Unit* who, int8  /*seatId*/, bool apply) override
     {
-        if (apply && who->GetTypeId() == TYPEID_PLAYER)
+        if (apply && who->IsPlayer())
             who->ToPlayer()->SetClientControl(me, 0, true);
     }
 
@@ -515,7 +516,15 @@ class spell_pilgrims_bounty_feast_on_generic : public SpellScript
 enum tTracker
 {
     SPELL_TURKEY_TRACKER                = 62014,
-    SPELL_ACHI_TURKINATOR_CREDIT        = 62021,
+    SPELL_ACHI_TURKINATOR_CREDIT        = 62021
+};
+
+enum Say
+{
+    SAY_TURKEY_HUNTER                       = 33163,
+    SAY_TURKEY_DOMINATION                   = 33164,
+    SAY_TURKEY_SLAUGHTER                    = 33165,
+    SAY_TURKEY_TRIUMPH                      = 33167
 };
 
 class spell_pilgrims_bounty_turkey_tracker : public SpellScript
@@ -532,16 +541,16 @@ class spell_pilgrims_bounty_turkey_tracker : public SpellScript
                 switch (stackAmount)
                 {
                     case 10:
-                        target->TextEmote("Turkey Hunter!", target, true);
+                        target->Whisper(SAY_TURKEY_HUNTER, target, true);
                         break;
                     case 20:
-                        target->TextEmote("Turkey Domination!", target, true);
+                        target->Whisper(SAY_TURKEY_DOMINATION, target, true);
                         break;
                     case 30:
-                        target->TextEmote("Turkey Slaughter!", target, true);
+                        target->Whisper(SAY_TURKEY_SLAUGHTER, target, true);
                         break;
                     case 40:
-                        target->TextEmote("TURKEY TRIUMPH!", target, true);
+                        target->Whisper(SAY_TURKEY_TRIUMPH, target, true);
                         target->CastSpell(target, SPELL_ACHI_TURKINATOR_CREDIT, true);
                         aurEff->GetBase()->Remove();
                         break;
@@ -563,7 +572,7 @@ class spell_pilgrims_bounty_serve_generic : public AuraScript
     void OnAuraRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
         Unit* target = GetTarget();
-        if (target->GetTypeId() == TYPEID_UNIT)
+        if (target->IsCreature())
             target->ToCreature()->AI()->DoAction(GetSpellInfo()->Id);
     }
 
@@ -675,4 +684,3 @@ void AddSC_event_pilgrims_end_scripts()
     new achievement_pb_pilgrims_peril();
     new achievement_pb_terokkar_turkey_time();
 }
-

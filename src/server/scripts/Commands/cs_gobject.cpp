@@ -15,13 +15,6 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* ScriptData
-Name: gobject_commandscript
-%Complete: 100
-Comment: All gobject related commands
-Category: commandscripts
-EndScriptData */
-
 #include "Chat.h"
 #include "CommandScript.h"
 #include "GameEventMgr.h"
@@ -30,7 +23,6 @@ EndScriptData */
 #include "Language.h"
 #include "MapMgr.h"
 #include "ObjectMgr.h"
-#include "Opcodes.h"
 #include "Player.h"
 #include "PoolMgr.h"
 #include "Transport.h"
@@ -59,7 +51,8 @@ public:
             { "add temp",  HandleGameObjectAddTempCommand,  SEC_GAMEMASTER,    Console::No },
             { "add",       HandleGameObjectAddCommand,      SEC_ADMINISTRATOR, Console::No },
             { "set phase", HandleGameObjectSetPhaseCommand, SEC_ADMINISTRATOR, Console::No },
-            { "set state", HandleGameObjectSetStateCommand, SEC_ADMINISTRATOR, Console::No }
+            { "set state", HandleGameObjectSetStateCommand, SEC_ADMINISTRATOR, Console::No },
+            { "respawn",   HandleGameObjectRespawn,         SEC_GAMEMASTER,    Console::No }
         };
         static ChatCommandTable commandTable =
         {
@@ -147,7 +140,7 @@ public:
         /// @todo is it really necessary to add both the real and DB table guid here ?
         sObjectMgr->AddGameobjectToGrid(guidLow, sObjectMgr->GetGameObjectData(guidLow));
 
-        handler->PSendSysMessage(LANG_GAMEOBJECT_ADD, uint32(objectId), objectInfo->name.c_str(), guidLow, player->GetPositionX(), player->GetPositionY(), player->GetPositionZ());
+        handler->PSendSysMessage(LANG_GAMEOBJECT_ADD, uint32(objectId), objectInfo->name, guidLow, player->GetPositionX(), player->GetPositionY(), player->GetPositionZ());
         return true;
     }
 
@@ -273,7 +266,7 @@ public:
 
         GameObject* target = handler->GetObjectFromPlayerMapByDbGuid(guidLow);
 
-        handler->PSendSysMessage(LANG_GAMEOBJECT_DETAIL, guidLow, objectInfo->name.c_str(), guidLow, id, x, y, z, mapId, o, phase);
+        handler->PSendSysMessage(LANG_GAMEOBJECT_DETAIL, guidLow, objectInfo->name, guidLow, id, x, y, z, mapId, o, phase);
 
         if (target)
         {
@@ -284,7 +277,7 @@ public:
             std::string curRespawnDelayStr = secsToTimeString(curRespawnDelay, true);
             std::string defRespawnDelayStr = secsToTimeString(target->GetRespawnDelay(), true);
 
-            handler->PSendSysMessage(LANG_COMMAND_RAWPAWNTIMES, defRespawnDelayStr.c_str(), curRespawnDelayStr.c_str());
+            handler->PSendSysMessage(LANG_COMMAND_RAWPAWNTIMES, defRespawnDelayStr, curRespawnDelayStr);
         }
         return true;
     }
@@ -305,7 +298,7 @@ public:
             Unit* owner = ObjectAccessor::GetUnit(*handler->GetSession()->GetPlayer(), ownerGuid);
             if (!owner || !ownerGuid.IsPlayer())
             {
-                handler->SendErrorMessage(LANG_COMMAND_DELOBJREFERCREATURE, ownerGuid.GetCounter(), object->GetSpawnId());
+                handler->SendErrorMessage(LANG_COMMAND_DELOBJREFERCREATURE, ownerGuid.ToString(), object->GetSpawnId());
                 return false;
             }
 
@@ -355,7 +348,7 @@ public:
             return false;
         }
 
-        handler->PSendSysMessage(LANG_COMMAND_TURNOBJMESSAGE, object->GetSpawnId(), object->GetGOInfo()->name.c_str(), object->GetSpawnId());
+        handler->PSendSysMessage(LANG_COMMAND_TURNOBJMESSAGE, object->GetSpawnId(), object->GetGOInfo()->name, object->GetSpawnId());
         return true;
     }
 
@@ -410,7 +403,7 @@ public:
             return false;
         }
 
-        handler->PSendSysMessage(LANG_COMMAND_MOVEOBJMESSAGE, object->GetSpawnId(), object->GetGOInfo()->name.c_str(), object->GetSpawnId());
+        handler->PSendSysMessage(LANG_COMMAND_MOVEOBJMESSAGE, object->GetSpawnId(), object->GetGOInfo()->name, object->GetSpawnId());
         return true;
     }
 
@@ -474,7 +467,7 @@ public:
                 if (!gameObjectInfo)
                     continue;
 
-                handler->PSendSysMessage(LANG_GO_LIST_CHAT, guid, entry, guid, gameObjectInfo->name.c_str(), x, y, z, mapId, "", "");
+                handler->PSendSysMessage(LANG_GO_LIST_CHAT, guid, entry, guid, gameObjectInfo->name, x, y, z, mapId, "", "");
 
                 ++count;
             } while (result->NextRow());
@@ -529,21 +522,21 @@ public:
 
         handler->PSendSysMessage(LANG_GOINFO_ENTRY, entry);
         if (gameObject)
-            handler->PSendSysMessage("GUID: %u", gameObject->GetGUID().GetCounter());
+            handler->PSendSysMessage("GUID: {}", gameObject->GetGUID().ToString());
         handler->PSendSysMessage(LANG_GOINFO_TYPE, type);
         handler->PSendSysMessage(LANG_GOINFO_LOOTID, lootId);
         handler->PSendSysMessage(LANG_GOINFO_DISPLAYID, displayId);
         if (gameObject)
         {
-            handler->PSendSysMessage("LootMode: %u", gameObject->GetLootMode());
-            handler->PSendSysMessage("LootState: %u", gameObject->getLootState());
-            handler->PSendSysMessage("GOState: %u", gameObject->GetGoState());
-            handler->PSendSysMessage("PhaseMask: %u", gameObject->GetPhaseMask());
-            handler->PSendSysMessage("IsLootEmpty: %u", gameObject->loot.empty());
-            handler->PSendSysMessage("IsLootLooted: %u", gameObject->loot.isLooted());
+            handler->PSendSysMessage("LootMode: {}", gameObject->GetLootMode());
+            handler->PSendSysMessage("LootState: {}", gameObject->getLootState());
+            handler->PSendSysMessage("GOState: {}", gameObject->GetGoState());
+            handler->PSendSysMessage("PhaseMask: {}", gameObject->GetPhaseMask());
+            handler->PSendSysMessage("IsLootEmpty: {}", gameObject->loot.empty());
+            handler->PSendSysMessage("IsLootLooted: {}", gameObject->loot.isLooted());
         }
 
-        handler->PSendSysMessage(LANG_GOINFO_NAME, name.c_str());
+        handler->PSendSysMessage(LANG_GOINFO_NAME, name);
 
         return true;
     }
@@ -578,7 +571,21 @@ public:
         {
             object->SendCustomAnim(*objectState);
         }
-        handler->PSendSysMessage("Set gobject type %d state %u", objectType, *objectState);
+        handler->PSendSysMessage("Set gobject type {} state {}", objectType, *objectState);
+        return true;
+    }
+
+    static bool HandleGameObjectRespawn(ChatHandler* handler, GameObjectSpawnId guidLow)
+    {
+        GameObject* object = handler->GetObjectFromPlayerMapByDbGuid(guidLow);
+        if (!object)
+        {
+            handler->SendErrorMessage(LANG_COMMAND_OBJNOTFOUND, uint32(guidLow));
+            return false;
+        }
+
+        object->Respawn();
+        handler->PSendSysMessage(LANG_CMD_GO_RESPAWN, object->GetNameForLocaleIdx(handler->GetSessionDbcLocale()), object->GetEntry(), object->GetSpawnId());
         return true;
     }
 };

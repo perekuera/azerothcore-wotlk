@@ -16,6 +16,7 @@
  */
 
 #include "InstanceScript.h"
+#include "Chat.h"
 #include "Creature.h"
 #include "DatabaseEnv.h"
 #include "GameObject.h"
@@ -602,7 +603,7 @@ void InstanceScript::DoSendNotifyToInstance(char const* format, ...)
 
         instance->DoForAllPlayers([&, buff](Player* player)
         {
-            player->GetSession()->SendNotification("%s", buff);
+            ChatHandler(player->GetSession()).SendNotification("{}", buff);
         });
     }
 }
@@ -678,7 +679,7 @@ void InstanceScript::DoCastSpellOnPlayer(Player* player, uint32 spell, bool incl
     for (auto itr2 = player->m_Controlled.begin(); itr2 != player->m_Controlled.end(); ++itr2)
     {
         if (Unit* controlled = *itr2)
-            if (controlled->IsInWorld() && controlled->GetTypeId() == TYPEID_UNIT)
+            if (controlled->IsInWorld() && controlled->IsCreature())
                 controlled->CastSpell(player, spell, true);
     }
 }
@@ -740,6 +741,44 @@ void InstanceScript::SendEncounterUnit(uint32 type, Unit* unit /*= nullptr*/, ui
     instance->SendToPlayers(&data);
 }
 
+void InstanceScript::LoadInstanceSavedGameobjectStateData()
+{
+    _objectStateMap.clear();
+
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SELECT_INSTANCE_SAVED_DATA);
+    stmt->SetData(0, instance->GetInstanceId());
+
+    if (PreparedQueryResult result = CharacterDatabase.Query(stmt))
+    {
+        Field* fields;
+
+        do
+        {
+            fields = result->Fetch();
+            StoreGameObjectState(fields[0].Get<uint32>(), fields[1].Get<uint8>());
+
+        } while (result->NextRow());
+    }
+}
+
+bool InstanceScript::AllBossesDone() const
+{
+    for (auto const& boss : bosses)
+        if (boss.state != DONE)
+            return false;
+
+    return true;
+}
+
+bool InstanceScript::AllBossesDone(std::initializer_list<uint32> bossIds) const
+{
+    for (auto const& bossId : bossIds)
+        if (!IsBossDone(bossId))
+            return false;
+
+    return true;
+}
+
 std::string InstanceScript::GetBossStateName(uint8 state)
 {
     // See enum EncounterState in InstanceScript.h
@@ -760,6 +799,18 @@ std::string InstanceScript::GetBossStateName(uint8 state)
         default:
             return "INVALID";
     }
+}
+
+uint8 InstanceScript::GetStoredGameObjectState(ObjectGuid::LowType spawnId) const
+{
+    auto i = _objectStateMap.find(spawnId);
+
+    if (i != _objectStateMap.end())
+    {
+        return i->second;
+    }
+
+    return 3; // Any state higher than 2 to get the default state for the object we are loading.
 }
 
 bool InstanceHasScript(WorldObject const* obj, char const* scriptName)

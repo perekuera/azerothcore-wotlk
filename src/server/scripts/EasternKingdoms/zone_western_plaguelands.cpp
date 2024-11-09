@@ -134,13 +134,13 @@ public:
     {
         npc_andorhal_towerAI(Creature* creature) : ScriptedAI(creature)
         {
-            SetCombatMovement(false);
+            me->SetCombatMovement(false);
         }
 
         void MoveInLineOfSight(Unit* who) override
 
         {
-            if (!who || who->GetTypeId() != TYPEID_PLAYER)
+            if (!who || !who->IsPlayer())
                 return;
 
             if (me->FindNearestGameObject(GO_BEACON_TORCH, 10.0f))

@@ -21,7 +21,6 @@
 #include "SpellMgr.h"
 #include "SpellScript.h"
 #include "SpellScriptLoader.h"
-#include "TemporarySummon.h"
 #include "Unit.h"
 /*
  * Scripts for spells with SPELLFAMILY_SHAMAN and SPELLFAMILY_GENERIC spells used by shaman players.
@@ -216,7 +215,7 @@ class spell_sha_feral_spirit_scaling : public AuraScript
             amount = CalculatePct(std::max<int32>(0, owner->GetTotalAttackPowerValue(BASE_ATTACK)), modifier);
 
             // xinef: Update appropriate player field
-            if (owner->GetTypeId() == TYPEID_PLAYER)
+            if (owner->IsPlayer())
                 owner->SetUInt32Value(PLAYER_PET_SPELL_POWER, (uint32)amount);
         }
     }
@@ -325,7 +324,7 @@ class spell_sha_fire_elemental_scaling : public AuraScript
             amount = CalculatePct(std::max<int32>(0, fire), 100);
 
             // xinef: Update appropriate player field
-            if (owner->GetTypeId() == TYPEID_PLAYER)
+            if (owner->IsPlayer())
                 owner->SetUInt32Value(PLAYER_PET_SPELL_POWER, (uint32)amount);
         }
     }
@@ -952,7 +951,7 @@ class spell_sha_lava_lash : public SpellScript
 
     bool Load() override
     {
-        return GetCaster()->GetTypeId() == TYPEID_PLAYER;
+        return GetCaster()->IsPlayer();
     }
 
     void HandleDummy(SpellEffIndex /*effIndex*/)
@@ -992,7 +991,7 @@ class spell_sha_mana_spring_totem : public SpellScript
         int32 damage = GetEffectValue();
         if (Unit* target = GetHitUnit())
             if (Unit* caster = GetCaster())
-                if (target->getPowerType() == POWER_MANA)
+                if (target->HasActivePowerType(POWER_MANA))
                     caster->CastCustomSpell(target, SPELL_SHAMAN_MANA_SPRING_TOTEM_ENERGIZE, &damage, 0, 0, true, 0, 0, GetOriginalCaster()->GetGUID());
     }
 
@@ -1017,7 +1016,7 @@ class spell_sha_mana_tide_totem : public SpellScript
         if (Unit* caster = GetCaster())
             if (Unit* unitTarget = GetHitUnit())
             {
-                if (unitTarget->getPowerType() == POWER_MANA)
+                if (unitTarget->HasActivePowerType(POWER_MANA))
                 {
                     int32 effValue = GetEffectValue();
                     // Glyph of Mana Tide
@@ -1050,7 +1049,7 @@ class spell_sha_sentry_totem : public AuraScript
     void AfterRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
         if (Unit* caster = GetCaster())
-            if (caster->GetTypeId() == TYPEID_PLAYER)
+            if (caster->IsPlayer())
                 caster->ToPlayer()->StopCastingBindSight();
     }
 
@@ -1178,4 +1177,3 @@ void AddSC_shaman_spell_scripts()
     RegisterSpellScript(spell_sha_flurry_proc);
     RegisterSpellScript(spell_sha_t8_electrified);
 }
-

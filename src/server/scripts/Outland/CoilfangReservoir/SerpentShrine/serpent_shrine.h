@@ -18,12 +18,7 @@
 #ifndef DEF_SERPENT_SHRINE_H
 #define DEF_SERPENT_SHRINE_H
 
-#include "CreatureAI.h"
 #include "CreatureAIImpl.h"
-#include "GridNotifiers.h"
-#include "Player.h"
-#include "SpellAuraEffects.h"
-#include "SpellScript.h"
 
 #define DataHeader "SS"
 
@@ -45,7 +40,8 @@ enum DataTypes
     DATA_ALIVE_KEEPERS                      = 22,
     DATA_BRIDGE_ACTIVATED                   = 23,
     DATA_ACTIVATE_SHIELD                    = 24,
-    DATA_STRANGE_POOL                       = 25
+    DATA_STRANGE_POOL                       = 25,
+    DATA_SEER_OLUM                          = 26
 };
 
 enum SSNPCs
@@ -60,6 +56,8 @@ enum SSNPCs
     NPC_FATHOM_GUARD_SHARKKIS               = 21966,
     NPC_FATHOM_GUARD_TIDALVESS              = 21965,
     NPC_FATHOM_GUARD_CARIBDIS               = 21964,
+
+    NPC_SEER_OLUM                           = 22820,
 
     NPC_COILFANG_SHATTERER                  = 21301,
     NPC_COILFANG_PRIESTESS                  = 21220,

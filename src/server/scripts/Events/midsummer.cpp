@@ -22,7 +22,6 @@
 #include "Player.h"
 #include "PlayerScript.h"
 #include "ScriptedCreature.h"
-#include "ScriptedGossip.h"
 #include "Spell.h"
 #include "SpellAuras.h"
 #include "SpellScript.h"
@@ -31,6 +30,7 @@
 
 enum eBonfire
 {
+    GO_MIDSUMMER_BONFIRE_SPELL_FOCUS            = 181371,
     GO_MIDSUMMER_BONFIRE_CAMPFIRE_SPELL_FOCUS   = 181377,
     GO_AHUNE_BONFIRE                            = 188073,
 
@@ -53,20 +53,6 @@ enum eBonfire
     COUNT_GO_BONFIRE_ALLIANCE   = 40,
     COUNT_GO_BONFIRE_HORDE      = 38,
     COUNT_GO_BONFIRE_CITY       = 9,
-};
-
-class go_midsummer_bonfire : public GameObjectScript
-{
-public:
-    go_midsummer_bonfire() : GameObjectScript("go_midsummer_bonfire") { }
-
-    bool OnGossipSelect(Player* player, GameObject*  /*go*/, uint32 /*sender*/, uint32  /*action*/) override
-    {
-        CloseGossipMenuFor(player);
-        // we know that there is only one gossip.
-        player->CastSpell(player, SPELL_STAMP_OUT_BONFIRE, true);
-        return true;
-    }
 };
 
 static bool BonfireStampedOutState[COUNT_GO_BONFIRE_ALLIANCE + COUNT_GO_BONFIRE_HORDE];
@@ -167,7 +153,7 @@ uint32 const GoBonfireCity[COUNT_GO_BONFIRE_CITY] = { 181332, 181333, 181334, 18
 class MidsummerPlayerScript : public PlayerScript
 {
 public:
-    MidsummerPlayerScript() : PlayerScript("MidsummerPlayerScript")
+    MidsummerPlayerScript() : PlayerScript("MidsummerPlayerScript", {PLAYERHOOK_ON_UPDATE_ZONE})
     {
     }
 
@@ -196,6 +182,10 @@ struct npc_midsummer_bonfire : public ScriptedAI
 {
     npc_midsummer_bonfire(Creature* creature) : ScriptedAI(creature)
     {
+        //  Midsummer Bonfire Spawn Trap also spawns this NPC (currently unwanted)
+        if (me->ToTempSummon())
+            me->DespawnOrUnsummon();
+
         _isStampedOut  = nullptr;
         _teamId     = TEAM_NEUTRAL;
         _type       = BONFIRE_TYPE_NONE;
@@ -252,6 +242,7 @@ struct npc_midsummer_bonfire : public ScriptedAI
                 if (_spellFocus)
                 {
                     _spellFocus->DespawnOrUnsummon();
+                    _spellFocus->AddObjectToRemoveList();
                     _spellFocus = nullptr;
                 }
 
@@ -314,6 +305,7 @@ struct npc_midsummer_bonfire : public ScriptedAI
             if ((_bonfire = me->FindNearestGameObject(GoBonfireCity[i], 10.0f)))
             {
                 _type = BONFIRE_TYPE_CITY;
+                Ignite();
                 return true;
             }
         }
@@ -340,7 +332,7 @@ struct npc_midsummer_bonfire : public ScriptedAI
 
     void SpellHit(Unit* caster, SpellInfo const* spellInfo) override
     {
-        if (caster->GetTypeId() != TYPEID_PLAYER)
+        if (!caster->IsPlayer())
             return;
 
         switch (spellInfo->Id)
@@ -374,6 +366,26 @@ private:
     uint8 _type;
     GameObject* _spellFocus;
     GameObject* _bonfire;
+};
+
+struct npc_midsummer_bonfire_despawner : public ScriptedAI
+{
+    npc_midsummer_bonfire_despawner(Creature* creature) : ScriptedAI(creature)
+    {
+        std::list<GameObject*> gobjList;
+        me->GetGameObjectListWithEntryInGrid(gobjList, GO_MIDSUMMER_BONFIRE_SPELL_FOCUS, 10.0f);
+        for (std::list<GameObject*>::const_iterator itr = gobjList.begin(); itr != gobjList.end(); ++itr)
+        {
+            // spawnID is 0 for temp spawns
+            if (0 == (*itr)->GetSpawnId())
+            {
+                (*itr)->DespawnOrUnsummon();
+                (*itr)->AddObjectToRemoveList();
+            }
+        }
+
+        me->DespawnOrUnsummon();
+    }
 };
 
 enum torchToss
@@ -425,7 +437,7 @@ struct npc_midsummer_torch_target : public ScriptedAI
         if (posVec.empty())
             return;
         // Triggered spell from torch
-        if (spellInfo->Id == SPELL_TORCH_TOSS_LAND && caster->GetTypeId() == TYPEID_PLAYER)
+        if (spellInfo->Id == SPELL_TORCH_TOSS_LAND && caster->IsPlayer())
         {
             me->CastSpell(me, SPELL_BRAZIERS_HIT_VISUAL, true); // hit visual anim
             if (++counter >= maxCount)
@@ -498,6 +510,27 @@ struct npc_midsummer_torch_target : public ScriptedAI
 ///////////////////////////////
 // SPELLS
 ///////////////////////////////
+
+class spell_fire_festival_fortitude : public SpellScript
+{
+    PrepareSpellScript(spell_fire_festival_fortitude)
+
+    void SelectTargets(std::list<WorldObject*>& targets)
+    {
+        targets.clear();
+
+        GetCaster()->GetMap()->DoForAllPlayers([&](Player* p)
+            {
+                if (p->GetZoneId() == GetCaster()->GetZoneId())
+                    targets.push_back(p);
+            });
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_fire_festival_fortitude::SelectTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ALLY);
+    }
+};
 
 class spell_bonfires_blessing : public AuraScript
 {
@@ -669,10 +702,10 @@ struct npc_midsummer_ribbon_pole_target : public ScriptedAI
         }
 
         // prevent duplicates
-        if (std::find(_dancerList.begin(), _dancerList.end(), dancer) != _dancerList.end())
+        if (std::find(_dancerList.begin(), _dancerList.end(), dancer->GetGUID()) != _dancerList.end())
             return;
 
-        _dancerList.push_back(dancer);
+        _dancerList.push_back(dancer->GetGUID());
     }
 
     void LocateRibbonPole()
@@ -700,10 +733,11 @@ struct npc_midsummer_ribbon_pole_target : public ScriptedAI
             return;
 
         // remove non-dancing players from list
-        std::erase_if(_dancerList, [](Player* dancer)
-            {
-                return !dancer->HasAura(SPELL_RIBBON_POLE_PERIODIC_VISUAL);
-            });
+        std::erase_if(_dancerList, [this](ObjectGuid dancerGUID)
+        {
+            Player* dancer = ObjectAccessor::GetPlayer(*me, dancerGUID);
+            return !dancer || !dancer->HasAura(SPELL_RIBBON_POLE_PERIODIC_VISUAL);
+        });
     }
 
     void DoFlameCircleChecks()
@@ -781,9 +815,7 @@ struct npc_midsummer_ribbon_pole_target : public ScriptedAI
 
                 for (uint8 i = 0; (i < MAX_COUNT_SPEW_LAVA_TARGETS) && (i < _dancerList.size()); i++)
                 {
-                    Player* dancerTarget = _dancerList[i];
-
-                    if (dancerTarget)
+                    if (Player* dancerTarget = ObjectAccessor::GetPlayer(*me, _dancerList[i]))
                     {
                         Creature* fireSpiralBunny = dancerTarget->SummonCreature(NPC_RIBBON_POLE_FIRE_SPIRAL_BUNNY, dancerTarget->GetPositionX(), dancerTarget->GetPositionY(), dancerTarget->GetPositionZ(), 0, TEMPSUMMON_TIMED_DESPAWN, 10000);
                         if (fireSpiralBunny)
@@ -816,7 +848,7 @@ struct npc_midsummer_ribbon_pole_target : public ScriptedAI
     }
 
 private:
-    std::vector<Player*> _dancerList;
+    GuidVector _dancerList;
     GameObject* _ribbonPole;
     Creature* _bunny;
 };
@@ -874,12 +906,12 @@ class spell_midsummer_ribbon_pole : public AuraScript
                 target->CastSpell(target, SPELL_RIBBON_POLE_XP, true);
 
                 // Achievement
-                if ((GameTime::GetGameTime().count() - GetApplyTime()) > 60 && target->GetTypeId() == TYPEID_PLAYER)
+                if ((GameTime::GetGameTime().count() - GetApplyTime()) > 60 && target->IsPlayer())
                     target->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 58934, 0, target);
             }
 
             // Achievement
-            if ((time(nullptr) - GetApplyTime()) > 60 && target->GetTypeId() == TYPEID_PLAYER)
+            if ((time(nullptr) - GetApplyTime()) > 60 && target->IsPlayer())
                 target->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 58934, 0, target);
         }
     }
@@ -1014,44 +1046,29 @@ class spell_midsummer_fling_torch : public SpellScript
     bool handled;
     bool Load() override { handled = false; return true; }
 
-    SpellCastResult CheckCast()
-    {
-        GetCaster()->GetCreaturesWithEntryInRange(_crList, 100.0f, NPC_TORCH_TARGET);
-        if (_crList.empty())
-        {
-            return SPELL_FAILED_NOT_HERE;
-        }
-
-        return SPELL_CAST_OK;
-    }
-
     void ThrowNextTorch(Unit* caster)
     {
-        uint8 rand = urand(0, _crList.size() - 1);
-        Position pos;
-        pos.Relocate(0.0f, 0.0f, 0.0f);
-        for (std::list<Creature*>::const_iterator itr = _crList.begin(); itr != _crList.end(); ++itr, --rand)
-        {
-            if (caster->GetDistance(*itr) < 5)
-            {
-                if (!rand)
-                    rand++;
-                continue;
-            }
+        Creature* bunny = caster->FindNearestCreature(NPC_TORCH_TARGET, 100.0f);
 
-            if (!rand)
-            {
-                pos.Relocate(*itr);
-                break;
-            }
-        }
+        if (!bunny)
+            return;
 
-        // we have any pos
-        if (pos.GetPositionX())
-        {
-            caster->CastSpell(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), SPELL_FLING_TORCH, true);
-            caster->CastSpell(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), SPELL_TORCH_SHADOW, true);
-        }
+        // targets are located on a circle with fixed radius around the target bunny
+        // first target is chosen randomly anywhere on the circle
+        // next target is chosen on the opposite half of the circle
+        // so a minimum flight duration of the torch is guaranteed
+        float angle = 0.0f;
+        if (GetSpellInfo()->Id == SPELL_FLING_TORCH_DUMMY)
+            angle = frand(-1.0f * M_PI, 1.0f * M_PI); // full circle
+        else
+            angle = frand(-0.5f * M_PI, 0.5f * M_PI); // half circle
+
+        Position pos = bunny->GetPosition();
+        pos.SetOrientation(caster->GetPosition().GetAbsoluteAngle(pos));
+        pos.RelocatePolarOffset(angle, 8.0f); // radius is sniffed value
+
+        caster->CastSpell(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), SPELL_FLING_TORCH, true);
+        caster->CastSpell(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), SPELL_TORCH_SHADOW, true);
     }
 
     void HandleFinish()
@@ -1108,15 +1125,11 @@ class spell_midsummer_fling_torch : public SpellScript
     void Register() override
     {
         AfterCast += SpellCastFn(spell_midsummer_fling_torch::HandleFinish);
-        OnCheckCast += SpellCheckCastFn(spell_midsummer_fling_torch::CheckCast);
         if (m_scriptSpellId == SPELL_JUGGLE_TORCH)
         {
             OnEffectHitTarget += SpellEffectFn(spell_midsummer_fling_torch::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
         }
     }
-
-private:
-    std::list<Creature*> _crList;
 };
 
 enum eJuggle
@@ -1159,7 +1172,7 @@ class spell_midsummer_juggling_torch : public SpellScript
     void HandleFinish()
     {
         Unit* caster = GetCaster();
-        if (!caster || caster->GetTypeId() != TYPEID_PLAYER)
+        if (!caster || !caster->IsPlayer())
             return;
 
         if (const WorldLocation* loc = GetExplTargetDest())
@@ -1228,18 +1241,62 @@ class spell_midsummer_torch_catch : public SpellScript
     }
 };
 
+// 46592 - Summon Ahune Lieutenant
+class spell_midsummer_summon_ahune_lieutenant : public SpellScript
+{
+    PrepareSpellScript(spell_midsummer_summon_ahune_lieutenant);
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        Unit* caster = GetCaster();
+        uint32 zoneId = caster->GetZoneId();
+        uint32 npcEntry = 0;
+
+        switch (zoneId)
+        {
+        case 331: // Ashenvale
+            npcEntry = 26116; // Frostwave Lieutenant
+            break;
+        case 405: // Desolace
+            npcEntry = 26178; // Hailstone Lieutenant
+            break;
+        case 33: // Stranglethorn Vale
+            npcEntry = 26204; // Chillwind Lieutenant
+            break;
+        case 51: // Searing Gorge
+            npcEntry = 26214; // Frigid Lieutenant
+            break;
+        case 1377: // Silithus
+            npcEntry = 26215; // Glacial Lieutenant
+            break;
+        case 3483: // Hellfire Peninsula
+            npcEntry = 26216; // Glacial Templar
+            break;
+        }
+
+        if (npcEntry)
+            caster->SummonCreature(npcEntry, caster->GetPosition(), TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, MINUTE * IN_MILLISECONDS);
+    }
+
+    void Register() override
+    {
+        OnEffectHit += SpellEffectFn(spell_midsummer_summon_ahune_lieutenant::HandleDummy, EFFECT_1, SPELL_EFFECT_APPLY_AURA);
+    }
+};
+
 void AddSC_event_midsummer_scripts()
 {
     // Player
     new MidsummerPlayerScript();
 
     // NPCs
-    new go_midsummer_bonfire();
     RegisterCreatureAI(npc_midsummer_bonfire);
+    RegisterCreatureAI(npc_midsummer_bonfire_despawner);
     RegisterCreatureAI(npc_midsummer_torch_target);
     RegisterCreatureAI(npc_midsummer_ribbon_pole_target);
 
     // Spells
+    RegisterSpellScript(spell_fire_festival_fortitude);
     RegisterSpellScript(spell_bonfires_blessing);
     RegisterSpellScript(spell_gen_crab_disguise);
     RegisterSpellScript(spell_midsummer_ribbon_pole_firework);
@@ -1249,5 +1306,5 @@ void AddSC_event_midsummer_scripts()
     RegisterSpellScript(spell_midsummer_fling_torch);
     RegisterSpellScript(spell_midsummer_juggling_torch);
     RegisterSpellScript(spell_midsummer_torch_catch);
+    RegisterSpellScript(spell_midsummer_summon_ahune_lieutenant);
 }
-

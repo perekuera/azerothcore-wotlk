@@ -19,6 +19,8 @@
 #include "ScriptedCreature.h"
 #include "SpellScriptLoader.h"
 #include "mechanar.h"
+#include "SpellAuraEffects.h"
+#include "SpellScript.h"
 
 enum Says
 {
@@ -148,8 +150,12 @@ struct npc_raging_flames : public ScriptedAI
         if (TempSummon* summon = me->ToTempSummon())
             if (Creature* summoner = summon->GetSummonerCreatureBase())
                 if (summoner->IsAIEnabled)
+                {
                     if (Unit* target = summoner->AI()->SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true, false))
                         me->AddThreat(target, 1000000.0f);
+                    else
+                        me->KillSelf();
+                }
     }
 
     void IsSummonedBy(WorldObject* /*summoner*/) override
@@ -176,7 +182,7 @@ struct npc_raging_flames : public ScriptedAI
 
     void EnterEvadeMode(EvadeReason /*why*/) override
     {
-        me->KillSelf();
+        FixateRandomTarget();
     }
 
     void UpdateAI(uint32 diff) override
@@ -211,4 +217,3 @@ void AddSC_boss_nethermancer_sepethrea()
     RegisterMechanarCreatureAI(npc_raging_flames);
     RegisterSpellScript(spell_ragin_flames_inferno);
 }
-

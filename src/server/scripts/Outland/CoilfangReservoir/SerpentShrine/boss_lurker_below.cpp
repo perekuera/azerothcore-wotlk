@@ -17,9 +17,12 @@
 
 #include "CreatureScript.h"
 #include "GameObjectScript.h"
+#include "Player.h"
 #include "ScriptedCreature.h"
 #include "SpellScriptLoader.h"
 #include "serpent_shrine.h"
+#include "SpellAuraEffects.h"
+#include "SpellScript.h"
 
 enum Spells
 {
@@ -82,6 +85,8 @@ struct boss_the_lurker_below : public BossAI
         if (GameObject* pool = instance->GetGameObject(DATA_STRANGE_POOL))
         {
             pool->Respawn();
+            pool->SetRespawnTime(10);
+            pool->SaveRespawnTime(10);
         }
         me->DespawnOrUnsummon(2000);
     }

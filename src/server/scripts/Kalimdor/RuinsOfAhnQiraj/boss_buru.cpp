@@ -106,7 +106,7 @@ struct boss_buru : public BossAI
 
     void KilledUnit(Unit* victim) override
     {
-        if (victim->GetTypeId() == TYPEID_PLAYER)
+        if (victim->IsPlayer())
             ChaseNewVictim();
     }
 
@@ -188,7 +188,7 @@ struct npc_buru_egg : public ScriptedAI
     npc_buru_egg(Creature* creature) : ScriptedAI(creature)
     {
         _instance = me->GetInstanceScript();
-        SetCombatMovement(false);
+        me->SetCombatMovement(false);
         me->SetReactState(REACT_PASSIVE);
         me->SetControlled(true, UNIT_STATE_STUNNED);
     }
@@ -270,4 +270,3 @@ void AddSC_boss_buru()
     RegisterRuinsOfAhnQirajCreatureAI(npc_buru_egg);
     RegisterSpellScript(spell_egg_explosion);
 }
-

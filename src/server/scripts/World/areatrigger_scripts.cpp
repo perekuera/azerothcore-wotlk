@@ -16,11 +16,9 @@
  */
 
 #include "AreaTriggerScript.h"
-#include "CreatureScript.h"
 #include "GameTime.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
-#include "SpellMgr.h"
 /* ScriptData
 SDName: Areatrigger_Scripts
 SD%Complete: 100
@@ -246,49 +244,6 @@ public:
 };
 
 /*######
-## at_sholazar_waygate
-######*/
-
-enum Waygate
-{
-    SPELL_SHOLAZAR_TO_UNGORO_TELEPORT           = 52056,
-    SPELL_UNGORO_TO_SHOLAZAR_TELEPORT           = 52057,
-
-    AT_SHOLAZAR                                 = 5046,
-    AT_UNGORO                                   = 5047,
-
-    QUEST_THE_MAKERS_OVERLOOK                   = 12613,
-    QUEST_THE_MAKERS_PERCH                      = 12559,
-    QUEST_MEETING_A_GREAT_ONE                   = 13956,
-};
-
-class AreaTrigger_at_sholazar_waygate : public AreaTriggerScript
-{
-public:
-    AreaTrigger_at_sholazar_waygate() : AreaTriggerScript("at_sholazar_waygate") { }
-
-    bool OnTrigger(Player* player, AreaTrigger const* trigger) override
-    {
-        if (!player->isDead() && (player->GetQuestStatus(QUEST_MEETING_A_GREAT_ONE) != QUEST_STATUS_NONE ||
-                                  (player->GetQuestStatus(QUEST_THE_MAKERS_OVERLOOK) == QUEST_STATUS_REWARDED && player->GetQuestStatus(QUEST_THE_MAKERS_PERCH) == QUEST_STATUS_REWARDED)))
-        {
-            switch (trigger->entry)
-            {
-                case AT_SHOLAZAR:
-                    player->CastSpell(player, SPELL_SHOLAZAR_TO_UNGORO_TELEPORT, true);
-                    break;
-
-                case AT_UNGORO:
-                    player->CastSpell(player, SPELL_UNGORO_TO_SHOLAZAR_TELEPORT, true);
-                    break;
-            }
-        }
-
-        return false;
-    }
-};
-
-/*######
 ## at_nats_landing
 ######*/
 
@@ -347,7 +302,7 @@ public:
 
         if (!player->FindNearestCreature(NPC_TERVOSH, 100.0f))
         {
-            if(Creature* tervosh = player->SummonCreature(NPC_TERVOSH, -3476.51f, -4105.94f, 17.1f, 5.3816f, TEMPSUMMON_TIMED_DESPAWN, 60000))
+            if (Creature* tervosh = player->SummonCreature(NPC_TERVOSH, -3476.51f, -4105.94f, 17.1f, 5.3816f, TEMPSUMMON_TIMED_DESPAWN, 60000))
                 tervosh->CastSpell(tervosh, SPELL_TELEPORT_VISUAL, true);
         }
 
@@ -490,10 +445,8 @@ void AddSC_areatrigger_scripts()
     new AreaTrigger_at_stormwright_shelf();
     new AreaTrigger_at_scent_larkorwi();
     new AreaTrigger_at_last_rites();
-    new AreaTrigger_at_sholazar_waygate();
     new AreaTrigger_at_nats_landing();
     new AreaTrigger_at_sentry_point();
     new AreaTrigger_at_brewfest();
     new AreaTrigger_at_area_52_entrance();
 }
-
