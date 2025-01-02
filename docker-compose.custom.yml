@@ -84,7 +84,8 @@ services:
       AC_RA_IP: "0.0.0.0"
       AC_RA_PORT: "3443"
       AC_SOAP_ENABLED: "1"
-      AC_SOAP_IP: "127.0.0.1"
+      #AC_SOAP_IP: "127.0.0.1"
+      AC_SOAP_IP: "0.0.0.0"
       AC_SOAP_PORT: "7878"
       ### SERVER ###
       AC_GAME_TYPE: "1"
