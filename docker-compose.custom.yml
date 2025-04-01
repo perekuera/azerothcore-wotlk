@@ -91,6 +91,7 @@ services:
       AC_GAME_TYPE: "1"
       AC_REALM_ZONE: "11"
       AC_DBC_LOCALE: "6"
+      AC_EXPANSION: "0"
       AC_CLIENT_CACHE_VERSION: "0" #OJO CON ESTO
       AC_PREVENT_AFK_LOGOUT: "2"
       ### WARDEN ###
